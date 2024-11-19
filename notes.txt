@@ -1,0 +1,75 @@
+Telegram bot for outage schedule notification
+of electricity in Zakarpattia region.
+
+The software product that is planned for development is a Telegram bot for
+notification about the schedule of power outages in the Transcarpathian region.
+The relevance of such a decision is due to unpredictable outages
+of electricity, causing inconvenience to citizens and businesses.
+The product will be developed on the basis of Node.js, using technologies
+to integrate with the Telegram API. The project also involves obtaining information
+from the electricity supplier, and filling the database for storage
+outage schedule.
+The capabilities of the Telegram bot consist in choosing a populated place (streets,
+house number), receiving updated information about hours
+enable/disable and enable notification/reminder on
+an hour before exclusion.
+
+Features of the bot:
+● Selection of region, street and house for more precise notification.
+● Updated information regarding outage hours.
+● Notification of a certain time before shutdown for preparation.
+
+Intellectual component:
+1. Notification Algorithms: The Bot may include algorithms for
+personalized notifications. For example, users can choose
+your region, street or house, as well as customize individual ones
+a reminder one hour before the scheduled shutdown.
+2. Data processing: The bot receives information from the provider
+electricity to automatically update outage schedules.
+Algorithms will process and analyze the data to transmit
+users only relevant information.
+
+Database:
+To save information about users, settlements, schedules
+outages, etc., a relational database will be used, for example
+PostgreSQL. The database will contain tables with information about regions, graphs
+and notifications.
+
+//---------------------------------------------
+
+Телеграм бот для сповіщення графіку відключення
+електроенергії у Закарпатській області.
+
+Програмний продукт, який планується до розробки, – це телеграм-бот для
+сповіщення про графік відключення електроенергії у Закарпатській області.
+Актуальність такого рішення зумовлена непередбачуваними відключеннями
+електроенергії, що створюють незручності для громадян та бізнесу.
+Продукт буде розроблений на базі Node.js, з використанням технологій
+для інтеграції з API Telegram. Проект також передбачає отримання інформації
+від постачальника електроенергії, та наповнення бази даних для збереження
+графіку відключень.
+Можливості телеграм-боту полягають у виборі населеного пункту(вулиці,
+номеру будинку), отримання актуалізованої інформації щодо годин
+включення/відключення, а також підключення сповіщення/нагадування на
+годину до виключення.
+
+Можливості бота:
+● Вибір регіону, вулиці та будинку для точнішого сповіщення.
+● Актуалізована інформація щодо годин відключення.
+● Сповіщення за певний час до відключення для підготовки.
+
+Інтелектуальна складова:
+1. Алгоритми сповіщення: Бот може включати алгоритми для
+персоналізованих сповіщень. Наприклад, користувачі можуть вибирати
+свій регіон, вулицю або будинок, а також налаштовувати індивідуальні
+нагадування за годину до планового відключення.
+2. Обробка даних: Бот отримує інформації від постачальника
+електроенергії для автоматичного оновлення графіків відключень.
+Алгоритми оброблятимуть та аналізуватимуть дані, щоб передавати
+користувачам лише актуальну інформацію.
+
+База даних:
+Для збереження інформації про користувачів, населені пункти, графіки
+відключень тощо буде використовуватись реляційна база даних, наприклад,
+PostgreSQL. База даних міститиме таблиці з інформацією про регіони, графіки
+та сповіщення.

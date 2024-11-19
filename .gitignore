@@ -1,1 +1,4 @@
 node_modules
+db/downloads
+db/testfiles
+constants.js

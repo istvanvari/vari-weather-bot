@@ -35,6 +35,13 @@ outages, etc., a relational database will be used, for example
 PostgreSQL. The database will contain tables with information about regions, graphs
 and notifications.
 
+
+Flexible Schema: 
+MongoDB is ideal if the structure of the data might evolve over time. For example, the outage schedule format might change or new fields (e.g., outage reasons or geographic data) could be added easily without needing to refactor the entire database schema.
+Document-Based: 
+Stores data in BSON format (similar to JSON), which is flexible and easy to work with when dealing with JSON-like data from external sources (e.g., electricity provider API).
+Scalable: 
+MongoDB is designed for scalability and can handle a large volume of data and high traffic (important if the number of users increases).
 //---------------------------------------------
 
 Телеграм бот для сповіщення графіку відключення

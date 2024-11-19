@@ -2,10 +2,10 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const db = require("./db");
+const { createAllChergaItems } = require("./controllers/chergaItemController");
 const downloadFolder = path.join(__dirname, "../db/downloads");
 
-
-const downloadFiles = () => {
+async function downloadFiles() {
   //download files from url to download folder
   const urls = [
     "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/cherga1.pdf",
@@ -16,26 +16,48 @@ const downloadFiles = () => {
     "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/cherga6.pdf",
   ];
 
-  for (let i = 0; i < urls.length; i++) {
-    const url = urls[i];
-    const fileName = url.split("/").pop();
-    const filePath = path.join(downloadFolder, fileName);
-
-    axios
-      .get(url, { responseType: "stream" })
-      .then((response) => {
-        const file = fs.createWriteStream(filePath);
-        response.data.pipe(file);
-        file.on("finish", () => {
-          file.close();
-        });
-      })
-      .catch((err) => {
-        console.error(err);
-      });
+  //clear download folder
+  if (fs.existsSync(downloadFolder)) {
+    fs.readdirSync(downloadFolder).forEach((file) => {
+      fs.unlinkSync(path.join(downloadFolder, file));
+    });
   }
-  console.log("Files downloaded successfully");
-};
+
+  // Create an array of promises for downloading each file
+  const downloadPromises = urls.map((url) => {
+    return new Promise((resolve, reject) => {
+      const fileName = url.split("/").pop();
+      const filePath = path.join(downloadFolder, fileName);
+
+      axios
+        .get(url, { responseType: "stream" })
+        .then((response) => {
+          const file = fs.createWriteStream(filePath);
+          response.data.pipe(file);
+
+          file.on("finish", () => {
+            file.close();
+            resolve(); // Resolve the promise when the file is finished downloading
+          });
+
+          file.on("error", (err) => {
+            reject(err); // Reject the promise if there's an error
+          });
+        })
+        .catch((err) => {
+          reject(err); // Reject the promise if there's an error with the HTTP request
+        });
+    });
+  });
+
+  // Wait for all download promises to complete
+  try {
+    await Promise.all(downloadPromises);
+    console.log("All files downloaded successfully.");
+  } catch (error) {
+    console.error("Error downloading files:", error);
+  }
+}
 
 //read table from pdf file
 function readPDF(filename) {
@@ -120,83 +142,87 @@ function readPDF(filename) {
 async function processPDFs() {
   const files = fs.readdirSync(downloadFolder);
   console.log(files);
-  let filename = downloadFolder + "/" + files[1];
 
-  try {
-    const data = await readPDF(filename);
+  for (let file = 1; file <= files.length; file++) {
+    let filename = downloadFolder + "/" + files[file - 1];
+    try {
+      const data = await readPDF(filename);
 
-    //remove first x rows
-    data.splice(0, 6);
+      //remove first x rows
+      data.splice(0, 6);
 
-    //consolidate data
-    let procesedData = [];
-    let dataType = [];
-    // 0: full;  1: no house ;  2: no city+street, 4: no street(---)
-    for (let i = 0; i < data.length; i++) {
-      if (!data[i][0] && !data[i][1] && data[i][2].length > 0) {
-        dataType.push(2);
-      } else if (!data[i][1]) {
-        dataType.push(4);
-      } else if (data[i][2].length === 0) {
-        dataType.push(1);
-      } else {
-        dataType.push(0);
-      }
-    }
-    console.log("dataType", dataType.length);
-
-    for (let i = 0; i < data.length; i++) {
-      //no data
-      if (dataType[i] === 4) {
-        continue;
-      }
-      if (dataType[i] === 0) {
-        procesedData.push(data[i]);
-      } else if (dataType[i] === 2) {
-        // Check for "2, 1, 2"
-        // Check for "2, 0, 2"
-        if (
-          i < data.length - 2 &&
-          dataType[i] === 2 &&
-          (dataType[i + 1] === 1 || dataType[i + 1] === 0) &&
-          dataType[i + 2] === 2
-        ) {
-          let res = [...data[i + 1]];
-          res[2] = [...data[i][2], ...data[i + 1][2], ...data[i + 2][2]];
-          procesedData.push(res);
-          i += 2;
+      //consolidate data
+      let procesedData = [];
+      let dataType = [];
+      // 0: full;  1: no house ;  2: no city+street, 4: no street(---)
+      for (let i = 0; i < data.length; i++) {
+        if (!data[i][0] && !data[i][1] && data[i][2].length > 0) {
+          dataType.push(2);
+        } else if (!data[i][1]) {
+          dataType.push(4);
+        } else if (data[i][2].length === 0) {
+          dataType.push(1);
+        } else {
+          dataType.push(0);
         }
-        // check for 22122
-        else if (dataType[i + 1] === 2) {
-          let j = 2;
-          while (true) {
-            if (dataType[i + j] === 2) j++;
-            else if (dataType[i + j] === 1 || dataType[i + j] === 0) {
-              // put together with for
-              let streets = [];
-              for (let k = 0; k < j * 2 + 1; k++) {
-                streets = [...streets, ...data[i + k][2]];
+      }
+      // console.log("dataType", dataType.length);
+
+      for (let i = 0; i < data.length; i++) {
+        //no data
+        if (dataType[i] === 4) {
+          continue;
+        }
+        if (dataType[i] === 0) {
+          procesedData.push(data[i]);
+        } else if (dataType[i] === 2) {
+          // Check for "2, 1, 2"
+          // Check for "2, 0, 2"
+          if (
+            i < data.length - 2 &&
+            dataType[i] === 2 &&
+            (dataType[i + 1] === 1 || dataType[i + 1] === 0) &&
+            dataType[i + 2] === 2
+          ) {
+            let res = [...data[i + 1]];
+            res[2] = [...data[i][2], ...data[i + 1][2], ...data[i + 2][2]];
+            procesedData.push(res);
+            i += 2;
+          }
+          // check for 22122
+          else if (dataType[i + 1] === 2) {
+            let j = 2;
+            while (true) {
+              if (dataType[i + j] === 2) j++;
+              else if (dataType[i + j] === 1 || dataType[i + j] === 0) {
+                // put together with for
+                let streets = [];
+                for (let k = 0; k < j * 2 + 1; k++) {
+                  streets = [...streets, ...data[i + k][2]];
+                }
+                let res = [...data[i + j]];
+                res[2] = [...streets];
+                procesedData.push(res);
+                i += j * 2;
+                break;
+              } else if (dataType[i + j] === 4) {
+                i += j * 2;
+                break;
               }
-              let res = [...data[i + j]];
-              res[2] = [...streets];
-              procesedData.push(res);
-              i += j * 2;
-              break;
-            } else if (dataType[i + j] === 4) {
-              i += j * 2;
-              break;
             }
           }
         }
       }
+      console.log("procesedData", procesedData.length);
+      createAllChergaItems(procesedData, filename[filename.length - 5]);
+    } catch (error) {
+      console.error(error);
     }
-    console.log("procesedData", procesedData.length);
-    writeToDB(procesedData);
-  } catch (error) {
-    console.error(error);
   }
 }
 
-processPDFs();
+async function importDataToDB() {
+  downloadFiles().then(() => processPDFs());
+}
 
-module.exports = { downloadFiles };
+module.exports = { importDataToDB };

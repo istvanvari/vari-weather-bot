@@ -2,7 +2,10 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const db = require("./db");
-const { createAllChergaItems } = require("./controllers/chergaItemController");
+const {
+  createAllChergaItems,
+  deleteAllChergaItems,
+} = require("./controllers/chergaItemController");
 const downloadFolder = path.join(__dirname, "../db/downloads");
 
 async function downloadFiles() {
@@ -63,14 +66,25 @@ async function downloadFiles() {
 function readPDF(filename) {
   var pdfreader = require("pdfreader");
 
+  const chergaNumber = parseInt(filename[filename.length - 5]);
+
   const nbCols = 3;
   const cellPadding = 50; // each cell is padded to fit 40 characters
   var pageWidth = 40;
 
+  const collumns = [
+    [0.174, 0.4],
+    [0.19, 0.445],
+    [0.25, 0.45],
+    [0.18, 0.45],
+    [0.24, 0.45],
+    [0.18, 0.45],
+  ];
+
   const columnQuantitizer = (item) => {
     var itemX = parseFloat(item.x);
-    if (itemX >= pageWidth * 0.45) return 2;
-    if (itemX <= pageWidth * 0.18) return 0;
+    if (itemX >= pageWidth * collumns[chergaNumber - 1][1]) return 2;
+    if (itemX <= pageWidth * collumns[chergaNumber - 1][0]) return 0;
     return 1;
   };
 
@@ -222,6 +236,7 @@ async function processPDFs() {
 }
 
 async function importDataToDB() {
+  deleteAllChergaItems();
   downloadFiles().then(() => processPDFs());
 }
 

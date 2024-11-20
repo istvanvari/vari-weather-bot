@@ -1,6 +1,8 @@
 const dotenv = require("dotenv");
 dotenv.config({ path: "./config.env" });
 
+const dbUtil = require("./dbUtil");
+
 const mongoose = require("mongoose");
 
 mongoose
@@ -12,4 +14,8 @@ mongoose
     console.log(err);
   });
 
-module.exports = {};
+function importData() {
+  dbUtil.importDataToDB();
+}
+
+module.exports = { importData };

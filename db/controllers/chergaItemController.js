@@ -21,3 +21,13 @@ module.exports.createAllChergaItems = async (data, chergaNumber) => {
     console.log(err);
   }
 };
+
+module.exports.deleteAllChergaItems = async () => {
+  try {
+    return await ChergaItem.deleteMany({}).then(
+      (result) => result.deletedCount
+    );
+  } catch (err) {
+    console.log(err);
+  }
+};

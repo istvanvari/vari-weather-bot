@@ -87,3 +87,16 @@ module.exports.getStreets = async (cityName) => {
     return [];
   }
 };
+
+module.exports.findCherga = async (city, street, houseNumber) => {
+  try {
+    const chergaItem = await ChergaItem.findOne({
+      city,
+      street,
+      houseNumbers: { $in: [houseNumber] },
+    });
+    return chergaItem.cherga;
+  } catch (err) {
+    console.log(err);
+  }
+};

@@ -1,3 +1,4 @@
+@zakarpat_energy_bot
 Telegram bot for outage schedule notification
 of electricity in Zakarpattia region.
 

@@ -5,7 +5,14 @@ const {
   getAllCityStartingLetters,
   getCityStartsWith,
   getStreets,
-} = require("./db/controllers/chergaItemController");
+  findCherga,
+} = require("./controllers/chergaItemController");
+const {
+  checkNotificationsEnabled,
+  createOrUpdateUser,
+  userExists,
+  toggleNotifications,
+} = require("./controllers/userController");
 
 const { Telegraf, Markup, Context, Scenes, session } = require("telegraf");
 const { message } = require("telegraf/filters");
@@ -138,7 +145,26 @@ houseNumbersScene.enter(async (ctx) => {
 houseNumbersScene.on("callback_query", async (ctx) => {
   const selectedHouseNumber = ctx.update.callback_query.data;
   ctx.session.houseNumber = selectedHouseNumber;
-  await ctx.deleteMessage();
+
+  const cherga = await findCherga(
+    ctx.session.cityName,
+    ctx.session.street,
+    ctx.session.houseNumber
+  );
+  const userData = {
+    chatId: ctx.callbackQuery.from.id,
+    city: ctx.session.cityName,
+    street: ctx.session.street,
+    houseNumber: ctx.session.houseNumber,
+    cherga: cherga,
+    notification: true,
+  };
+  createOrUpdateUser(ctx.callbackQuery.from.id, userData);
+  ctx.deleteMessage();
+  start(
+    ctx,
+    `У вас ${cherga} черга - після підключення сповіщень орієнтуйтесь на неї!`
+  );
   ctx.session = {}; // Clear session at the end of interaction
   return ctx.scene.leave();
 });
@@ -160,22 +186,52 @@ bot.use(stage.middleware());
 //commands
 const commands = [
   { command: "/start", description: "Start the bot" },
-  { command: "/help", description: "Show help information" },
-  { command: "/city", description: "Select a city" },
+  // { command: "/help", description: "Show help information" },
+  // { command: "/city", description: "Select a city" },
 ];
 
 bot.telegram.setMyCommands(commands);
 
-bot.start((ctx) => {
-  ctx.reply(
-    "Welcome to your Telegram bot! Use /help to see available commands."
-  );
+const getMenu = (notificationsEnabled) => [
+  "📍 Оновити адресу",
+  !notificationsEnabled
+    ? "🔔 Підключити сповіщення (ON)"
+    : "🔕 Відключити сповіщення (OFF)",
+];
+
+bot.start(async (ctx) => {
+  start(ctx, "Вітаю! Виберіть дію: ");
 });
 
-bot.help((ctx) => {
-  commands.forEach((command) => {
-    ctx.reply("Send " + command.command + " to " + command.description);
-  });
+// bot.help((ctx) => {
+//   commands.forEach((command) => {
+//     ctx.reply("Send " + command.command + " to " + command.description);
+//   });
+// });
+
+bot.hears("📍 Оновити адресу", async (ctx) => {
+  ctx.session = {}; // Clear session to prevent conflicts
+  ctx.scene.enter("select_city_letter");
+});
+
+bot.hears("🔔 Підключити сповіщення (ON)", async (ctx) => {
+  const userId = ctx.update.message.from.id;
+  const userAlredy = await userExists(userId);
+
+  if (userAlredy) {
+    await toggleNotifications(userId);
+    start(ctx, "Сповіщення підключено. ✅");
+  } else {
+    ctx.session = {}; // Clear session to prevent conflicts
+    await ctx.reply("Щоб підключити сповіщення, введіть свою адресу:");
+    ctx.scene.enter("select_city_letter");
+  }
+});
+
+bot.hears("🔕 Відключити сповіщення (OFF)", async (ctx) => {
+  const userId = ctx.update.message.from.id;
+  await toggleNotifications(userId);
+  start(ctx, "Сповіщення відключено. ❌");
 });
 
 bot.command("city", (ctx) => {
@@ -188,6 +244,17 @@ bot.launch();
 // Graceful shutdown on process termination (Ctrl + C)
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
+
+//helpers
+async function start(ctx, msg) {
+  const userId = ctx.from.id;
+  const notificationsEnabled = await checkNotificationsEnabled(userId);
+
+  ctx.reply(
+    msg,
+    Markup.keyboard(getMenu(notificationsEnabled)).oneTime().resize()
+  );
+}
 
 function chunkArray(cityLetters, chunkSize) {
   const chunkedCityLetters = [];

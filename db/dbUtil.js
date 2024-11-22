@@ -5,7 +5,7 @@ const db = require("./db");
 const {
   createAllChergaItems,
   deleteAllChergaItems,
-} = require("./controllers/chergaItemController");
+} = require("../controllers/chergaItemController");
 const downloadFolder = path.join(__dirname, "../db/downloads");
 
 async function downloadFiles() {

@@ -14,8 +14,8 @@ mongoose
     console.log(err);
   });
 
-function importData() {
-  dbUtil.importDataToDB();
+async function importData() {
+  await dbUtil.importDataToDB();
 }
 
 module.exports = { importData };

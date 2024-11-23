@@ -2,6 +2,7 @@ const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
 const db = require("./db");
+
 const {
   createAllChergaItems,
   deleteAllChergaItems,
@@ -155,8 +156,8 @@ function readPDF(filename) {
 
 async function processPDFs() {
   const files = fs.readdirSync(downloadFolder);
-  console.log(files);
-
+  console.log("Processing PDFs...");
+  
   for (let file = 1; file <= files.length; file++) {
     let filename = downloadFolder + "/" + files[file - 1];
     try {
@@ -227,17 +228,18 @@ async function processPDFs() {
           }
         }
       }
-      console.log("procesedData", procesedData.length);
       createAllChergaItems(procesedData, filename[filename.length - 5]);
     } catch (error) {
       console.error(error);
     }
   }
+  console.log("PDFs processed successfully");
 }
 
 async function importDataToDB() {
-  deleteAllChergaItems();
-  downloadFiles().then(() => processPDFs());
+  await deleteAllChergaItems();
+  await downloadFiles();
+  await processPDFs();
 }
 
 module.exports = { importDataToDB };

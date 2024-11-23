@@ -86,3 +86,11 @@ module.exports.userExists = async (chatId) => {
     return false;
   }
 };
+
+module.exports.getUsersWithNotifications = async (chergaNumber) => {
+  try {
+    return await User.find({ notification: true, cherga: chergaNumber }).exec();
+  } catch (err) {
+    console.log(err);
+  }
+};

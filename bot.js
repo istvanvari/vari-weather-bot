@@ -190,14 +190,7 @@ const commands = [
   // { command: "/city", description: "Select a city" },
 ];
 
-bot.telegram.setMyCommands(commands);
-
-const getMenu = (notificationsEnabled) => [
-  "📍 Оновити адресу",
-  !notificationsEnabled
-    ? "🔔 Підключити сповіщення (ON)"
-    : "🔕 Відключити сповіщення (OFF)",
-];
+// bot.telegram.setMyCommands(commands);
 
 bot.start(async (ctx) => {
   start(ctx, "Вітаю! Виберіть дію: ");
@@ -245,6 +238,19 @@ bot.launch();
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
 
+//------------------------------------------
+// messages
+const getMenu = (notificationsEnabled) => [
+  "📍 Оновити адресу",
+  !notificationsEnabled
+    ? "🔔 Підключити сповіщення (ON)"
+    : "🔕 Відключити сповіщення (OFF)",
+];
+
+const getNotificationMessage = (chergaNumber) =>
+  `⚡️❌ ${chergaNumber} ЧЕРГА - ЧЕРЕЗ 10 ХВИЛИН МОЖЛИВЕ ВІДКЛЮЧЕННЯ СВІТЛА`;
+
+//------------------------------------------
 //helpers
 async function start(ctx, msg) {
   const userId = ctx.from.id;
@@ -282,3 +288,14 @@ function validateSession(
   }
   return true; // Indicates validation success
 }
+
+module.exports.sendMessage = async (chatId, chergaNumber) => {
+  try {
+    await bot.telegram.sendMessage(
+      chatId,
+      getNotificationMessage(chergaNumber)
+    );
+  } catch (err) {
+    console.log(err);
+  }
+};

@@ -141,7 +141,7 @@ function readPDF(filename) {
       if (!item) {
         // End of file
         data = data.concat(extractDataFromPage(table.getMatrix()));
-        console.log("File read successfully: ", filename.split("/").pop());
+        console.log("File read successfully:", filename.split("/").pop());
         resolve(data);
       } else if (item.page) {
         data = data.concat(extractDataFromPage(table.getMatrix()));
@@ -157,7 +157,7 @@ function readPDF(filename) {
 async function processPDFs() {
   const files = fs.readdirSync(downloadFolder);
   console.log("Processing PDFs...");
-  
+
   for (let file = 1; file <= files.length; file++) {
     let filename = downloadFolder + "/" + files[file - 1];
     try {

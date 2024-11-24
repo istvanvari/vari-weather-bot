@@ -1,8 +1,11 @@
 const { CronJob } = require("cron");
 
-const { getUsersWithNotifications } = require("./controllers/userController");
+const {
+  getUsersWithNotifications,
+  getAllUsersNotifications,
+} = require("./controllers/userController");
 const { getChergas } = require("./controllers/chergaController");
-const { sendMessage } = require("./bot");
+const { sendMessage, sendUpdateMessage } = require("./bot");
 
 let scheduledNotifications = [];
 
@@ -55,14 +58,16 @@ module.exports.startNotifications = async () => {
       );
       // if outageStart more than 10 minutes in the future
       const tenMinutesFromNow = new Date(Date.now() + 10 * 60 * 1000);
-      if (!(outageStart.getTime() > tenMinutesFromNow.getTime())) {
+      if (outageStart.getTime() <= tenMinutesFromNow.getTime()) {
         return;
       }
       const dayOfWeek = now.getDay();
 
       const job = new CronJob(
         `50 ${outage[0] - 1} * * ${dayOfWeek}`,
-        sendNotification(index),
+        () => {
+          sendNotification(index);
+        },
         null,
         true,
         "Europe/Kiev"
@@ -70,7 +75,9 @@ module.exports.startNotifications = async () => {
       scheduledNotifications.push(job);
     });
   });
-  // testNotifications();
+  if (process.env.NODE_ENV === "testing") {
+    testNotifications();
+  }
   return Promise.resolve();
 };
 
@@ -84,6 +91,17 @@ const sendNotification = async (chergaNumber) => {
     const users = await getUsersWithNotifications(chergaNumber);
     users.forEach((user) => {
       sendMessage(user.chatId, chergaNumber);
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
+
+module.exports.sendNotificationToAll = async (messages) => {
+  try {
+    const users = await getAllUsersNotifications();
+    users.forEach((user) => {
+      sendUpdateMessage(user.chatId, messages);
     });
   } catch (error) {
     console.log(error);

@@ -1,6 +1,3 @@
-const dotenv = require("dotenv");
-dotenv.config({ path: "./config.env" });
-
 const {
   getAllCityStartingLetters,
   getCityStartsWith,
@@ -18,8 +15,7 @@ const { Telegraf, Markup, Context, Scenes, session } = require("telegraf");
 const { message } = require("telegraf/filters");
 const bot = new Telegraf(process.env.TOKEN);
 
-//------------------------------------------
-//scenes
+//scenes ------------------------------------------
 const stage = new Scenes.Stage();
 
 // Scene 1. Get starting letter of city
@@ -171,8 +167,7 @@ houseNumbersScene.on("callback_query", async (ctx) => {
 
 stage.register(cityLettersScene, cityNameScene, streetScene, houseNumbersScene);
 
-//------------------------------------------
-//Middlewares
+//Middlewares ------------------------------------------
 bot.use(session());
 bot.use(stage.middleware());
 
@@ -182,10 +177,9 @@ bot.use(stage.middleware());
 //   next();
 // });
 
-//------------------------------------------
-//commands
+//commands ------------------------------------------
 const commands = [
-  { command: "/start", description: "Start the bot" },
+  { command: "/start", description: "Почати роботу бота 🚀" },
   // { command: "/help", description: "Show help information" },
   // { command: "/city", description: "Select a city" },
 ];
@@ -238,8 +232,7 @@ bot.launch();
 process.once("SIGINT", () => bot.stop("SIGINT"));
 process.once("SIGTERM", () => bot.stop("SIGTERM"));
 
-//------------------------------------------
-// messages
+// messages ------------------------------------------
 const getMenu = (notificationsEnabled) => [
   "📍 Оновити адресу",
   !notificationsEnabled
@@ -250,8 +243,11 @@ const getMenu = (notificationsEnabled) => [
 const getNotificationMessage = (chergaNumber) =>
   `⚡️❌ ${chergaNumber} ЧЕРГА - ЧЕРЕЗ 10 ХВИЛИН МОЖЛИВЕ ВІДКЛЮЧЕННЯ СВІТЛА`;
 
-//------------------------------------------
-//helpers
+const getUpdateMessage = (messages) =>
+  "⚡️🕰️ Актуалізована інформація щодо годин включення/відключення електроенергії:\n\n" +
+  messages.join("\n\n");
+
+//helpers ------------------------------------------
 async function start(ctx, msg) {
   const userId = ctx.from.id;
   const notificationsEnabled = await checkNotificationsEnabled(userId);
@@ -295,6 +291,14 @@ module.exports.sendMessage = async (chatId, chergaNumber) => {
       chatId,
       getNotificationMessage(chergaNumber)
     );
+  } catch (err) {
+    console.log(err);
+  }
+};
+
+module.exports.sendUpdateMessage = async (chatId, messages) => {
+  try {
+    await bot.telegram.sendMessage(chatId, getUpdateMessage(messages));
   } catch (err) {
     console.log(err);
   }

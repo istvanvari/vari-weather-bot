@@ -94,3 +94,11 @@ module.exports.getUsersWithNotifications = async (chergaNumber) => {
     console.log(err);
   }
 };
+
+module.exports.getAllUsersNotifications = async () => {
+  try {
+    return await User.find({ notification: true }).exec();
+  } catch (err) {
+    console.log(err);
+  }
+};

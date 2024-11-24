@@ -62,25 +62,35 @@ module.exports.checkNotificationsEnabled = async (chatId) => {
   }
 };
 
-module.exports.toggleNotifications = async (chatId) => {
+module.exports.enableNotifications = async (chatId) => {
   try {
-    const user = await User.findOne({ chatId });
-    if (user) {
-      user.notification = !user.notification;
-      await user.save();
-      return user.notification;
-    }
-    return false;
+    const result = await User.updateOne(
+      { chatId },
+      { $set: { notification: true } }
+    );
+    return result.modifiedCount > 0;
   } catch (err) {
-    console.log(err);
+    console.error(err);
     return false;
   }
 };
 
+module.exports.disableNotifications = async (chatId) => {
+  try {
+    const result = await User.updateOne(
+      { chatId },
+      { $set: { notification: false } }
+    );
+    return result.modifiedCount > 0;
+  } catch (err) {
+    console.error(err);
+    return false;
+  }
+};
 module.exports.userExists = async (chatId) => {
   try {
     const user = await User.findOne({ chatId });
-    return user ? true : false;
+    return user || false;
   } catch (err) {
     console.log(err);
     return false;

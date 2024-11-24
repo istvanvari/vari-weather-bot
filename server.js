@@ -38,7 +38,7 @@ startup().then(() => {
     "Europe/Kiev"
   );
 
-  //every 10 minutes check for updates
+  //every minute check for updates
   const job2 = new CronJob(
     process.env.NODE_ENV === "testing" ? "*/10 * * * * *" : "* * * * *",
     async function () {

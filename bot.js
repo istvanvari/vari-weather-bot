@@ -8,7 +8,8 @@ const {
   checkNotificationsEnabled,
   createOrUpdateUser,
   userExists,
-  toggleNotifications,
+  enableNotifications,
+  disableNotifications,
 } = require("./controllers/userController");
 
 const { Telegraf, Markup, Context, Scenes, session } = require("telegraf");
@@ -155,7 +156,7 @@ houseNumbersScene.on("callback_query", async (ctx) => {
     cherga: cherga,
     notification: true,
   };
-  createOrUpdateUser(ctx.callbackQuery.from.id, userData);
+  await createOrUpdateUser(ctx.callbackQuery.from.id, userData);
   ctx.deleteMessage();
   start(
     ctx,
@@ -203,11 +204,11 @@ bot.hears("📍 Оновити адресу", async (ctx) => {
 
 bot.hears("🔔 Підключити сповіщення (ON)", async (ctx) => {
   const userId = ctx.update.message.from.id;
-  const userAlredy = await userExists(userId);
+  const user = await userExists(userId);
 
-  if (userAlredy) {
-    await toggleNotifications(userId);
-    start(ctx, "Сповіщення підключено. ✅");
+  if (user) {
+    await enableNotifications(userId);
+    await start(ctx, "Сповіщення підключено. ✅");
   } else {
     ctx.session = {}; // Clear session to prevent conflicts
     await ctx.reply("Щоб підключити сповіщення, введіть свою адресу:");
@@ -217,8 +218,8 @@ bot.hears("🔔 Підключити сповіщення (ON)", async (ctx) => 
 
 bot.hears("🔕 Відключити сповіщення (OFF)", async (ctx) => {
   const userId = ctx.update.message.from.id;
-  await toggleNotifications(userId);
-  start(ctx, "Сповіщення відключено. ❌");
+  await disableNotifications(userId);
+  await start(ctx, "Сповіщення відключено. ❌");
 });
 
 bot.command("city", (ctx) => {
@@ -252,7 +253,7 @@ async function start(ctx, msg) {
   const userId = ctx.from.id;
   const notificationsEnabled = await checkNotificationsEnabled(userId);
 
-  ctx.reply(
+  await ctx.reply(
     msg,
     Markup.keyboard(getMenu(notificationsEnabled)).oneTime().resize()
   );

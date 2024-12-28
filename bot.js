@@ -18,6 +18,8 @@ const { Telegraf, Markup, Context, Scenes, session } = require("telegraf");
 const { message } = require("telegraf/filters");
 const bot = new Telegraf(process.env.TOKEN);
 
+const arrayChunkSize = 6;
+
 //scenes ------------------------------------------
 const stage = new Scenes.Stage();
 
@@ -27,7 +29,7 @@ cityLettersScene.enter(async (ctx) => {
   let cityLetters = await getAllCityStartingLetters();
 
   // Split the cityLetters into chunks
-  const chunkedCityLetters = chunkArray(cityLetters, 6);
+  const chunkedCityLetters = chunkArray(cityLetters, arrayChunkSize);
 
   try {
     await ctx.reply(
@@ -88,6 +90,7 @@ streetScene.enter(async (ctx) => {
   if (!validateSession(ctx, "cityName")) return;
 
   let streets = await getStreets(ctx.session.cityName);
+  streets.sort((a, b) => a.street.localeCompare(b.street));
 
   const noStreet = streets.filter((street) => !street.street);
   if (noStreet.length > 0 || streets.length === 0) {
@@ -101,17 +104,34 @@ streetScene.enter(async (ctx) => {
   ctx.session.streets = streets;
 
   ctx.deleteMessage();
+
+  const chunkedStreets = chunkArray(streets, 2);
   try {
-    await ctx.reply(
-      "Виберіть вулицю:",
-      Markup.inlineKeyboard(
-        streets
-          .filter((street) => street.street)
-          .map((street) => [
-            Markup.button.callback(street.street, `street_${street.street}`),
-          ])
-      )
-    );
+    if (streets.length > 99) {
+      await ctx.reply(
+        "Виберіть вулицю:",
+        Markup.inlineKeyboard(
+          chunkedStreets.map((chunk) =>
+            chunk
+              .filter((street) => street.street)
+              .map((street) =>
+                Markup.button.callback(street.street, `street_${street.street}`)
+              )
+          )
+        )
+      );
+    } else {
+      await ctx.reply(
+        "Виберіть вулицю:",
+        Markup.inlineKeyboard(
+          streets
+            .filter((street) => street.street)
+            .map((street) => [
+              Markup.button.callback(street.street, `street_${street.street}`),
+            ])
+        )
+      );
+    }
   } catch (err) {
     console.error("Failed to edit message:", err.message);
     ctx.scene.leave();
@@ -135,8 +155,8 @@ houseNumbersScene.enter(async (ctx) => {
     await ctx.reply("Будь ласка, використайте повторно команду /city");
     return ctx.scene.leave(); // Exit the scene gracefully
   }
-  const houseNumbers = sortLocale(street.houseNumbers);
-  const chunkedHouseNumbers = chunkArray(houseNumbers, 6);
+  const houseNumbers = sortNumericStrings([...new Set(street.houseNumbers)]);
+  const chunkedHouseNumbers = chunkArray(houseNumbers, arrayChunkSize);
 
   ctx.deleteMessage();
   try {

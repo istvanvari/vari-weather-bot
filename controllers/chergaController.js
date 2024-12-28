@@ -60,42 +60,6 @@ module.exports.updateCherga = async () => {
     console.error(`Error reading cherga file: ${err}`);
   }
 };
-// module.exports.startUpdateCherga = async () => {
-//   await updateCherga();
-//   startUpdatePrompt();
-// };
-
-// async function startUpdatePrompt() {
-//   const readline = require("readline");
-
-//   const rl = readline.createInterface({
-//     input: process.stdin,
-//     output: process.stdout,
-//   });
-
-//   function askQuestion(question) {
-//     return new Promise((resolve) => {
-//       rl.question(question, (answer) => {
-//         resolve(answer.toLowerCase());
-//       });
-//     });
-//   }
-
-//   while (true) {
-//     const answer = await askQuestion(
-//       "\nDo you want to update the cherga data? [type y/yes]: \n"
-//     );
-
-//     if (answer === "y" || answer === "yes") {
-//       console.log("Updating cherga data...");
-//       await updateCherga();
-//     } else {
-//       console.log(
-//         'Invalid input. Please type "y" or "yes" to update the cherga data.'
-//       );
-//     }
-//   }
-// }
 
 module.exports.getChergas = async () => {
   try {

@@ -6,6 +6,7 @@ const userSchema = new mongoose.Schema({
   street: { type: String, required: true },
   houseNumber: { type: String, required: true },
   cherga: { type: Number, required: true },
+  subCherga: { type: Number, required: true },
   notification: { type: Boolean, required: true, default: false },
 });
 

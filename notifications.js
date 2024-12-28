@@ -3,70 +3,44 @@ const { CronJob } = require("cron");
 const {
   getUsersWithNotifications,
   getAllUsersNotifications,
-} = require("./controllers/userController");
-const { getChergas } = require("./controllers/chergaController");
+} = require("./controllers/userController.js");
+const { getChergas } = require("./controllers/chergaController.js");
 const { sendMessage, sendUpdateMessage } = require("./bot");
 
 let scheduledNotifications = [];
 
+// set notifications for every upcoming outage today
 module.exports.startNotifications = async () => {
   console.log("Starting notifications...");
-  let chergas = await getChergas();
+  const chergas = await getChergas();
 
-  let outages = [[], [], [], [], [], []];
-
-  for (let i = 0; i < chergas.length; i++) {
-    let start = null;
-    let end = null;
-    for (let j = 0; j < chergas[i].hours.length; j++) {
-      if (chergas[i].hours[j] === false && start === null) {
-        start = j;
-      } else if (chergas[i].hours[j] === true && start !== null) {
-        end = j - 1;
-        outages[i].push([start, end]);
-        start = null;
-        end = null;
-      }
-    }
-    if (start !== null) {
-      outages[i].push([start, 23]);
-    }
-  }
-  // console.log(outages);
-
-  //set notifications for every upcoming outage today
-  outages.forEach((cherga, index) => {
-    cherga.forEach((outage) => {
+  chergas.forEach((cherga) => {
+    cherga.hours.forEach((outage) => {
+      // console.log(outage, cherga.cherga, cherga.subCherga);
       const now = new Date();
       const outageStart = new Date(
         now.getFullYear(),
         now.getMonth(),
         now.getDate(),
-        outage[0],
-        0,
-        0,
-        0
-      );
-      const outageEnd = new Date(
-        now.getFullYear(),
-        now.getMonth(),
-        now.getDate(),
-        outage[1],
-        0,
+        outage.start.hours,
+        outage.start.minutes,
         0,
         0
       );
-      // if outageStart more than 10 minutes in the future
-      const tenMinutesFromNow = new Date(Date.now() + 10 * 60 * 1000);
-      if (outageStart.getTime() <= tenMinutesFromNow.getTime()) {
-        return;
-      }
       const dayOfWeek = now.getDay();
 
+      // if outageStart more than 10 minutes in the future
+      if (outageStart.getTime() - 10 * 60 * 1000 <= Date.now()) {
+        return;
+      }
       const job = new CronJob(
-        `50 ${outage[0] - 1} * * ${dayOfWeek}`,
+        outage.start.minutes == 0
+          ? `50 ${outage.start.hours - 1} * * ${dayOfWeek}`
+          : `${outage.start.minutes - 10} ${
+              outage.start.hours
+            } * * ${dayOfWeek}`,
         () => {
-          sendNotification(index);
+          sendNotification(outage.cherga, outage.subCherga);
         },
         null,
         true,
@@ -84,13 +58,17 @@ module.exports.startNotifications = async () => {
 module.exports.clearNotifications = () => {
   scheduledNotifications.forEach((job) => job.stop());
   scheduledNotifications = [];
+  return Promise.resolve();
 };
 
-const sendNotification = async (chergaNumber) => {
+const sendNotification = async (chergaNumber, subChergaNumber) => {
   try {
-    const users = await getUsersWithNotifications(chergaNumber);
+    const users = await getUsersWithNotifications(
+      chergaNumber,
+      subChergaNumber
+    );
     users.forEach((user) => {
-      sendMessage(user.chatId, chergaNumber);
+      sendMessage(user.chatId, chergaNumber, subChergaNumber);
     });
   } catch (error) {
     console.log(error);
@@ -110,7 +88,8 @@ module.exports.sendNotificationToAll = async (messages) => {
 
 const testNotifications = async () => {
   for (let i = 1; i <= 6; i++) {
-    sendNotification(i);
+    sendNotification(i, 1);
+    sendNotification(i, 2);
   }
 };
 

@@ -1,23 +1,31 @@
 const axios = require("axios");
 const fs = require("fs");
 const path = require("path");
-const db = require("./db");
+const db = require("./db.js");
+const pdfTableExtractor = require("@florpor/pdf-table-extractor");
 
 const {
   createAllChergaItems,
   deleteAllChergaItems,
-} = require("../controllers/chergaItemController");
+} = require("../controllers/chergaItemController.js");
+
 const downloadFolder = path.join(__dirname, "../db/downloads");
 
 async function downloadFiles() {
   //download files from url to download folder
   const urls = [
-    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/cherga1.pdf",
-    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/cherga2.pdf",
-    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/cherga3.pdf",
-    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/cherga4.pdf",
-    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/cherga5.pdf",
-    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/cherga6.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c1_p1-1.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c1_p1-2.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c2_p2-1.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c2_p2-2.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c3_p3-1.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c3_p3-2.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c4_p4-1.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c4_p4-2.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c5_p5-1.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c5_p5-2.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c6_p6-1.pdf",
+    "https://zakarpat.energy/customers/break-in-electricity-supply/schedule/chergy/c6_p6-2.pdf",
   ];
 
   //clear download folder
@@ -25,6 +33,8 @@ async function downloadFiles() {
     fs.readdirSync(downloadFolder).forEach((file) => {
       fs.unlinkSync(path.join(downloadFolder, file));
     });
+  } else {
+    fs.mkdirSync(downloadFolder);
   }
 
   // Create an array of promises for downloading each file
@@ -67,25 +77,51 @@ async function downloadFiles() {
 function readPDF(filename) {
   var pdfreader = require("pdfreader");
 
-  const chergaNumber = parseInt(filename[filename.length - 5]);
+  const chergaNumbers = filename.slice(-7, -4).split("-").map(Number);
 
   const nbCols = 3;
   const cellPadding = 50; // each cell is padded to fit 40 characters
   var pageWidth = 40;
 
   const collumns = [
-    [0.174, 0.4],
-    [0.19, 0.445],
-    [0.25, 0.45],
-    [0.18, 0.45],
-    [0.24, 0.45],
-    [0.18, 0.45],
+    [
+      [0.267, 0.51],
+      [0.23, 0.47],
+    ],
+    [
+      [0.27, 0.543],
+      [0.267, 0.51],
+    ],
+    [
+      [0.267, 0.51],
+      [0.23, 0.47],
+    ],
+    [
+      [0.267, 0.51],
+      [0.248, 0.488],
+    ],
+    [
+      [0.23, 0.47],
+      [0.23, 0.47],
+    ],
+    [
+      [0.267, 0.51],
+      [0.267, 0.51],
+    ],
   ];
 
   const columnQuantitizer = (item) => {
     var itemX = parseFloat(item.x);
-    if (itemX >= pageWidth * collumns[chergaNumber - 1][1]) return 2;
-    if (itemX <= pageWidth * collumns[chergaNumber - 1][0]) return 0;
+    if (
+      itemX >=
+      pageWidth * collumns[chergaNumbers[0] - 1][chergaNumbers[1] - 1][1]
+    )
+      return 2;
+    if (
+      itemX <=
+      pageWidth * collumns[chergaNumbers[0] - 1][chergaNumbers[1] - 1][0]
+    )
+      return 0;
     return 1;
   };
 
@@ -141,8 +177,10 @@ function readPDF(filename) {
       if (!item) {
         // End of file
         data = data.concat(extractDataFromPage(table.getMatrix()));
-        console.log("File read successfully:", filename.split("/").pop());
-        resolve(data);
+        console.log(table.renderMatrix());
+
+        console.log("File read successfully:", filename.split("\\").pop());
+        resolve([data, chergaNumbers]);
       } else if (item.page) {
         data = data.concat(extractDataFromPage(table.getMatrix()));
         pageWidth = item.width;
@@ -155,14 +193,17 @@ function readPDF(filename) {
 }
 
 async function processPDFs() {
-  const files = fs.readdirSync(downloadFolder);
+  // const files = fs.readdirSync(downloadFolder);
+  const files = ["c1_p1-2.pdf"];
   console.log("Processing PDFs...");
 
-  for (let file = 1; file <= files.length; file++) {
-    let filename = downloadFolder + "/" + files[file - 1];
-    try {
-      const data = await readPDF(filename);
+  for (let file = 0; file < files.length; file++) {
+    let filename = downloadFolder + "\\" + files[file];
 
+    try {
+      const [data, chergaNumbers] = await readPDF(filename);
+
+      // console.log(data);
       //remove first x rows
       data.splice(0, 6);
 
@@ -228,7 +269,7 @@ async function processPDFs() {
           }
         }
       }
-      createAllChergaItems(procesedData, filename[filename.length - 5]);
+      createAllChergaItems(procesedData, chergaNumbers);
     } catch (error) {
       console.error(error);
     }
@@ -236,10 +277,58 @@ async function processPDFs() {
   console.log("PDFs processed successfully");
 }
 
+async function processPDFsv2() {
+  const files = fs.readdirSync(downloadFolder);
+  // const files = ["c6_p6-2.pdf"];
+  console.log("Processing PDFs...");
+
+  const processPromises = files.map((file) => {
+    return new Promise((resolve, reject) => {
+      let filePath = downloadFolder + "\\" + file;
+      const chergaNumbers = file.slice(-7, -4).split("-").map(Number);
+
+      let procesedData = [];
+      try {
+        pdfTableExtractor(filePath).then((res) => {
+          res.pageTables.forEach((page) => {
+            page.tables.forEach((row) => {
+              procesedData.push([
+                row[0].trim(),
+                row[1].trim(),
+                row[2]
+                  .replace(/\n/g, "") // remove newline characters
+                  .replace(/(^\s*,)|(,\s*$)/g, "") // remove extra commas from start and end
+                  .split(",")
+                  .map((item) => item.trim())
+                  .filter((item) => item !== "")
+                  .map((item) => item.replace(/-$/, "")), // remove - at the end
+              ]);
+            });
+          });
+          procesedData.splice(0, 1);
+          console.log("File: " + file + " processed");
+          createAllChergaItems(procesedData, chergaNumbers);
+          resolve();
+        });
+      } catch (error) {
+        console.error(error);
+      }
+    });
+  });
+
+  try {
+    await Promise.all(processPromises);
+    console.log("PDFs processed successfully.");
+  } catch (error) {
+    console.error(error);
+  }
+}
+
 async function importDataToDB() {
   await deleteAllChergaItems();
   await downloadFiles();
-  await processPDFs();
+  await processPDFsv2();
+  // await processPDFs();
 }
 
 module.exports = { importDataToDB };

@@ -1,7 +1,7 @@
 const dotenv = require("dotenv");
 dotenv.config({ path: "./config.env" });
 
-const dbUtil = require("./dbUtil");
+const dbUtil = require("./dbUtil.js");
 
 const mongoose = require("mongoose");
 

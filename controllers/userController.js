@@ -1,4 +1,4 @@
-const User = require("../models/user");
+const User = require("../models/user.js");
 
 module.exports.getAllUsers = async () => {
   try {
@@ -26,11 +26,11 @@ module.exports.createUser = async (user) => {
 
 module.exports.createOrUpdateUser = async (chatId, userData) => {
   try {
-    const user = await User.findOneAndUpdate(
-      { chatId: chatId },
-      { $set: userData },
-      { new: true, upsert: true } // Create if not found, return updated document
-    );
+    const user = await User.findOneAndUpdate({ chatId }, userData, {
+      new: true,
+      upsert: true,
+    });
+    return user;
   } catch (error) {
     console.error("Error creating or updating user:", error);
   }
@@ -97,9 +97,16 @@ module.exports.userExists = async (chatId) => {
   }
 };
 
-module.exports.getUsersWithNotifications = async (chergaNumber) => {
+module.exports.getUsersWithNotifications = async (
+  chergaNumber,
+  subChergaNumber
+) => {
   try {
-    return await User.find({ notification: true, cherga: chergaNumber }).exec();
+    return await User.find({
+      notification: true,
+      cherga: chergaNumber,
+      subCherga: subChergaNumber,
+    }).exec();
   } catch (err) {
     console.log(err);
   }

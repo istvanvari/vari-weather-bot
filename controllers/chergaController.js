@@ -1,48 +1,101 @@
 const fs = require("fs");
 const path = require("path");
-const Cherga = require("../models/cherga");
+const Cherga = require("../models/cherga.js");
 const chergaPath = path.join(__dirname, "../data/cherga.txt");
 
 // Function to read and parse the cherga.txt file
-function readChergaFile(filePath) {
+async function readChergaFile(filePath) {
   try {
     // Read the file content
     const data = fs.readFileSync(filePath, "utf8");
+    try {
+      let array = data
+        .split("\n")
+        .map((line) => line.trim().split(/\s*\|\s*/))
+        .filter((line) => line.length > 1)
+        .map((line) => line.slice(1));
 
-    // Split content by lines and map to a 2D array
-    const array = data.split("\n").map(
-      (line) => line.trim().split(/\s+/).map(Number) // Split by whitespace and convert to numbers
-    );
-
-    return array.slice(1);
+      array = array.map((line) =>
+        line.map((item) => {
+          const [start, end] = item.split("-");
+          const startParts = start.split(":");
+          const endParts = end.split(":");
+          return {
+            start: {
+              hours: parseInt(startParts[0], 10),
+              minutes: parseInt(startParts[1], 10),
+            },
+            end: {
+              hours: parseInt(endParts[0], 10),
+              minutes: parseInt(endParts[1], 10),
+            },
+          };
+        })
+      );
+      return array;
+    } catch (err) {
+      console.error("Error parsing cherga data, check cherga.txt", err);
+      return null;
+    }
   } catch (err) {
-    console.error("Error reading the file:", err);
+    console.error(`Error reading cherga file: ${err}`);
     return null;
   }
 }
 
 module.exports.updateCherga = async () => {
-  const chergaData = readChergaFile(chergaPath);
-  // console.log(chergaData);
-
-  if (chergaData === null) {
-    console.error("Could not read the cherga.txt file");
-    return;
-  }
-
   try {
+    const chergaData = await readChergaFile(chergaPath);
+
     await Cherga.deleteMany({}); // Clear the collection
-    for (let i = 1; i <= chergaData.length; i++) {
-      await Cherga.insertMany({
-        cherga: i,
-        hours: chergaData[i - 1].map((item) => Boolean(item)),
+    chergaData.forEach((cherga, index) => {
+      Cherga.create({
+        cherga: Math.round((index + 1) / 2),
+        subCherga: (index % 2) + 1,
+        hours: cherga,
       });
-    }
+    });
     console.log("Cherga data updated successfully");
   } catch (err) {
-    console.error(err);
+    console.error(`Error reading cherga file: ${err}`);
   }
 };
+// module.exports.startUpdateCherga = async () => {
+//   await updateCherga();
+//   startUpdatePrompt();
+// };
+
+// async function startUpdatePrompt() {
+//   const readline = require("readline");
+
+//   const rl = readline.createInterface({
+//     input: process.stdin,
+//     output: process.stdout,
+//   });
+
+//   function askQuestion(question) {
+//     return new Promise((resolve) => {
+//       rl.question(question, (answer) => {
+//         resolve(answer.toLowerCase());
+//       });
+//     });
+//   }
+
+//   while (true) {
+//     const answer = await askQuestion(
+//       "\nDo you want to update the cherga data? [type y/yes]: \n"
+//     );
+
+//     if (answer === "y" || answer === "yes") {
+//       console.log("Updating cherga data...");
+//       await updateCherga();
+//     } else {
+//       console.log(
+//         'Invalid input. Please type "y" or "yes" to update the cherga data.'
+//       );
+//     }
+//   }
+// }
 
 module.exports.getChergas = async () => {
   try {

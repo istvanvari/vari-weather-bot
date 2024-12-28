@@ -12,6 +12,8 @@ const {
   disableNotifications,
 } = require("./controllers/userController");
 
+const { sortLocale, sortNumericStrings } = require("./util");
+
 const { Telegraf, Markup, Context, Scenes, session } = require("telegraf");
 const { message } = require("telegraf/filters");
 const bot = new Telegraf(process.env.TOKEN);
@@ -32,7 +34,9 @@ cityLettersScene.enter(async (ctx) => {
       "Виберіть першу літеру населеного пункту:",
       Markup.inlineKeyboard(
         chunkedCityLetters.map((chunk) =>
-          chunk.map((letter) => Markup.button.callback(letter, letter))
+          chunk.map((letter) =>
+            Markup.button.callback(letter, `letter_${letter}`)
+          )
         )
       )
     );
@@ -45,7 +49,7 @@ cityLettersScene.enter(async (ctx) => {
 cityLettersScene.on("callback_query", (ctx) => {
   ctx.answerCbQuery();
   const selectedLetter = ctx.update.callback_query.data;
-  ctx.session.cityLetter = selectedLetter;
+  ctx.session.cityLetter = selectedLetter[selectedLetter.length - 1];
   ctx.scene.enter("select_city_name");
 });
 
@@ -83,7 +87,17 @@ const streetScene = new Scenes.BaseScene("select_street");
 streetScene.enter(async (ctx) => {
   if (!validateSession(ctx, "cityName")) return;
 
-  const streets = await getStreets(ctx.session.cityName);
+  let streets = await getStreets(ctx.session.cityName);
+
+  const noStreet = streets.filter((street) => !street.street);
+  if (noStreet.length > 0 || streets.length === 0) {
+    const combinedNoStreet = {
+      street: "інші номери будинків",
+      houseNumbers: noStreet.flatMap((street) => street.houseNumbers),
+    };
+    streets = streets.filter((street) => street.street);
+    streets.push(combinedNoStreet);
+  }
   ctx.session.streets = streets;
 
   ctx.deleteMessage();
@@ -91,9 +105,11 @@ streetScene.enter(async (ctx) => {
     await ctx.reply(
       "Виберіть вулицю:",
       Markup.inlineKeyboard(
-        streets.map((street) => [
-          Markup.button.callback(street.street, street.street),
-        ])
+        streets
+          .filter((street) => street.street)
+          .map((street) => [
+            Markup.button.callback(street.street, `street_${street.street}`),
+          ])
       )
     );
   } catch (err) {
@@ -104,7 +120,7 @@ streetScene.enter(async (ctx) => {
 });
 streetScene.on("callback_query", async (ctx) => {
   const selectedStreet = ctx.update.callback_query.data;
-  ctx.session.street = selectedStreet;
+  ctx.session.street = selectedStreet.substring("street_".length);
   ctx.scene.enter("select_house_numbers");
 });
 
@@ -119,8 +135,7 @@ houseNumbersScene.enter(async (ctx) => {
     await ctx.reply("Будь ласка, використайте повторно команду /city");
     return ctx.scene.leave(); // Exit the scene gracefully
   }
-
-  const houseNumbers = sortLocal(street.houseNumbers);
+  const houseNumbers = sortLocale(street.houseNumbers);
   const chunkedHouseNumbers = chunkArray(houseNumbers, 6);
 
   ctx.deleteMessage();
@@ -153,14 +168,16 @@ houseNumbersScene.on("callback_query", async (ctx) => {
     city: ctx.session.cityName,
     street: ctx.session.street,
     houseNumber: ctx.session.houseNumber,
-    cherga: cherga,
+    cherga: cherga[0],
+    subCherga: cherga[1],
     notification: true,
   };
   await createOrUpdateUser(ctx.callbackQuery.from.id, userData);
   ctx.deleteMessage();
   start(
     ctx,
-    `У вас ${cherga} черга - після підключення сповіщень орієнтуйтесь на неї!`
+    `У вас ${cherga[0]}-${cherga[1]} черга - після підключення сповіщень орієнтуйтесь на неї!` +
+      "\n\nСповіщення підключено. ✅"
   );
   ctx.session = {}; // Clear session at the end of interaction
   return ctx.scene.leave();
@@ -241,8 +258,8 @@ const getMenu = (notificationsEnabled) => [
     : "🔕 Відключити сповіщення (OFF)",
 ];
 
-const getNotificationMessage = (chergaNumber) =>
-  `⚡️❌ ${chergaNumber} ЧЕРГА - ЧЕРЕЗ 10 ХВИЛИН МОЖЛИВЕ ВІДКЛЮЧЕННЯ СВІТЛА`;
+const getNotificationMessage = (chergaNumber, subChergaNumber) =>
+  `⚡️❌ ${chergaNumber}.${subChergaNumber} ЧЕРГА - ЧЕРЕЗ 10 ХВИЛИН МОЖЛИВЕ ВІДКЛЮЧЕННЯ СВІТЛА`;
 
 const getUpdateMessage = (messages) =>
   "⚡️🕰️ Актуалізована інформація щодо годин включення/відключення електроенергії:\n\n" +
@@ -267,12 +284,6 @@ function chunkArray(cityLetters, chunkSize) {
   return chunkedCityLetters;
 }
 
-function sortLocal(array) {
-  return array.sort((a, b) =>
-    a.localeCompare(b, undefined, { sensitivity: "base" })
-  );
-}
-
 function validateSession(
   ctx,
   property,
@@ -286,11 +297,11 @@ function validateSession(
   return true; // Indicates validation success
 }
 
-module.exports.sendMessage = async (chatId, chergaNumber) => {
+module.exports.sendMessage = async (chatId, chergaNumber, subChergaNumber) => {
   try {
     await bot.telegram.sendMessage(
       chatId,
-      getNotificationMessage(chergaNumber)
+      getNotificationMessage(chergaNumber, subChergaNumber)
     );
   } catch (err) {
     console.log(err);

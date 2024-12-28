@@ -1,4 +1,5 @@
-const ChergaItem = require("../models/chergaItem");
+const ChergaItem = require("../models/chergaItem.js");
+const { sortLocale, sortNumericStrings } = require("../util");
 
 module.exports.createChergaItem = async (data) => {
   try {
@@ -8,13 +9,14 @@ module.exports.createChergaItem = async (data) => {
   }
 };
 
-module.exports.createAllChergaItems = async (data, chergaNumber) => {
+module.exports.createAllChergaItems = async (data, chergaNumbers) => {
   try {
     data = data.map((item) => ({
-      cherga: chergaNumber,
+      cherga: chergaNumbers[0],
+      subCherga: chergaNumbers[1],
       city: item[0],
       street: item[1],
-      houseNumbers: item[2],
+      houseNumbers: sortNumericStrings(item[2]),
     }));
     return await ChergaItem.insertMany(data);
   } catch (err) {
@@ -45,9 +47,7 @@ module.exports.getAllCityStartingLetters = async () => {
     const cities = await ChergaItem.distinct("city");
     let startingLetters = cities.map((city) => city.charAt(0).toUpperCase());
     startingLetters = [...new Set(startingLetters)];
-    return startingLetters.sort((a, b) =>
-      a.localeCompare(b, undefined, { sensitivity: "base" })
-    );
+    return sortLocale(startingLetters);
   } catch (err) {
     console.log(err);
   }
@@ -74,14 +74,14 @@ module.exports.getStreets = async (cityName) => {
       return { street: item.street, houseNumbers: item.houseNumbers };
     });
     // Remove duplicates
-    const uniqueStreets = [
+    let uniqueStreets = [
       ...new Map(streets.map((street) => [street.street, street])).values(),
     ];
-    //sort streets
-    uniqueStreets.sort((a, b) =>
-      a.street.localeCompare(b.street, undefined, { sensitivity: "base" })
-    );
-    return uniqueStreets; // Return unique streets
+    //remove { street: '', houseNumbers: [] },
+    // uniqueStreets = uniqueStreets.filter(
+    //   (street) => street.street !== "" && street.houseNumbers.length > 0
+    // );
+    return sortLocale(uniqueStreets);
   } catch (err) {
     console.error(err);
     return [];
@@ -90,12 +90,13 @@ module.exports.getStreets = async (cityName) => {
 
 module.exports.findCherga = async (city, street, houseNumber) => {
   try {
+    if (street === "інші номери будинків") street = "";
     const chergaItem = await ChergaItem.findOne({
       city,
       street,
       houseNumbers: { $in: [houseNumber] },
     });
-    return chergaItem.cherga;
+    return [chergaItem.cherga, chergaItem.subCherga];
   } catch (err) {
     console.log(err);
   }
